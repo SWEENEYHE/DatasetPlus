@@ -1,0 +1,13 @@
+# Core dependencies
+datasets>=2.0.0
+pandas>=1.3.0
+numpy>=1.21.0
+
+# Optional dependencies for different file formats
+openpyxl>=3.0.0  # For Excel file support
+xlrd>=2.0.0      # For older Excel file support
+pyarrow>=5.0.0   # For better performance with datasets
+
+# Utility dependencies
+tqdm>=4.62.0     # Progress bars
+requests>=2.25.0 # HTTP requests
