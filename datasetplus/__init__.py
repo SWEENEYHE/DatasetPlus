@@ -1,6 +1,6 @@
 """DatasetPlus - An enhanced wrapper for Hugging Face datasets."""
 
-from .core import DatasetPlus, DatasetPlusMeta, DatasetPlusExcels
+from .core import DatasetPlus, DatasetPlusMeta, DatasetPlusExcels, MyLLMTool
 
 __version__ = "0.1.0"
 __author__ = "sweeneyhe"

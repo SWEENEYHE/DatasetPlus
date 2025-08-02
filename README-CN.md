@@ -547,3 +547,120 @@ def robust_processing(example):
 - 📊 Excel文件支持
 - ⚡ 缓存和批处理
 - 📂 目录加载支持
+
+## 🛠️ 辅助工具
+
+DatasetPlus提供了两个强大的辅助工具来增强您的数据处理工作流：
+
+### MyLLMTool
+
+一个全面的大语言模型调用工具，支持OpenAI兼容的API。
+
+#### 核心特性
+- **多模型支持**: 兼容OpenAI和其他OpenAI兼容的API
+- **灵活配置**: 可自定义参数以适应不同使用场景
+- **无缝集成**: 与DatasetPlus处理工作流完美集成
+
+#### 方法说明
+
+- **`__init__(model_name, base_url, api_key)`**: 初始化LLM工具
+  - `model_name`: 要使用的模型名称（如"gpt-3.5-turbo"）
+  - `base_url`: API基础URL（如"https://api.openai.com/v1"）
+  - `api_key`: 用于身份验证的API密钥
+
+- **`getResult(query, sys_prompt=None, temperature=0.7, top_p=1, max_tokens=2048, model_name=None)`**: 获取LLM响应
+  - `query`: 用户查询或提示词
+  - `sys_prompt`: 系统提示词，用于设置上下文（可选）
+  - `temperature`: 控制随机性（0.0-2.0）
+  - `top_p`: 通过核采样控制多样性
+  - `max_tokens`: 生成的最大token数
+  - `model_name`: 覆盖此次请求的默认模型
+
+#### 使用示例
+```python
+from datasetplus import MyLLMTool
+
+llm = MyLLMTool(
+    model_name="gpt-3.5-turbo",
+    base_url="https://api.openai.com/v1",
+    api_key="your-api-key"
+)
+
+result = llm.getResult(
+    query="为以下文本生成摘要: ...",
+    sys_prompt="你是一个有用的助手。",
+    temperature=0.7
+)
+```
+
+### DataTool
+
+一个实用工具类，提供各种数据处理和解析功能，用于常见的数据操作任务。
+
+#### 核心特性
+- **JSON解析**: 安全的JSON提取和解析
+- **文件操作**: 从文件读取和采样数据
+- **数据验证**: 检查数据结构合规性
+- **格式转换**: 在不同数据格式间转换
+
+#### 方法说明
+
+- **`parse_json_safe(text_str)`**: 从文本中提取和解析JSON对象/数组
+  - `text_str`: 可能包含嵌入式JSON的输入字符串
+  - 返回: 解析成功的Python对象列表（字典或列表）
+
+- **`get_prompt(file_path)`**: 读取文本文件并返回内容字符串
+  - `file_path`: 文本文件路径
+  - 返回: 文件内容的拼接字符串
+
+- **`check(row)`**: 验证消息格式的数据结构
+  - `row`: 要验证的数据行
+  - 返回: 布尔值，表示结构是否有效
+
+- **`check_with_system(row)`**: 检查数据是否具有系统消息格式
+  - `row`: 要验证的数据行
+  - 返回: 布尔值，表示是否具有有效的系统消息
+
+- **`parse_messages(str_row)`**: 从字符串解析消息格式
+  - `str_row`: 包含消息数据的字符串
+  - 返回: 解析的消息对象或None
+
+- **`parse_json(str, json_tag=False)`**: 带错误处理的JSON解析
+  - `str`: 要解析的JSON字符串
+  - `json_tag`: 是否从```json```代码块中提取
+  - 返回: 解析的对象，失败时返回None
+
+- **`sample_from_file(file_path, num=-1)`**: 从文本文件采样行
+  - `file_path`: 文件路径
+  - `num`: 采样数量（-1表示全部）
+  - 返回: 采样行的列表
+
+- **`sample_from(path, num=-1, granularity="auto", exclude=[])`**: 从文件/目录采样数据
+  - `path`: 文件或目录路径
+  - `num`: 采样数量（-1表示全部）
+  - `granularity`: 采样粒度（"auto"、"file"、"line"）
+  - `exclude`: 要排除的模式
+  - 返回: 采样内容列表
+
+- **`jsonl2json(source_path, des_path)`**: 将JSONL转换为JSON格式
+  - `source_path`: 源JSONL文件路径
+  - `des_path`: 目标JSON文件路径
+
+#### 使用示例
+```python
+from datasetplus import DataTool
+
+# 从文本解析JSON
+json_data = DataTool.parse_json_safe('一些文本 {"key": "value"} 更多文本')
+
+# 从文件读取提示词
+prompt = DataTool.get_prompt('prompt.txt')
+
+# 验证数据结构
+is_valid = DataTool.check(data_row)
+
+# 从文件采样
+samples = DataTool.sample_from_file('data.txt', num=10)
+```
+
+这些辅助工具旨在与DatasetPlus工作流无缝协作，为LLM集成和数据处理任务提供必要的实用功能。

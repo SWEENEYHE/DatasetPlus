@@ -549,3 +549,120 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - 📊 Excel file support
 - ⚡ Caching and batch processing
 - 📂 Directory loading support
+
+## 🛠️ Auxiliary Tools
+
+DatasetPlus provides two powerful auxiliary tools to enhance your data processing workflow:
+
+### MyLLMTool
+
+A comprehensive LLM (Large Language Model) calling tool that supports OpenAI-compatible APIs.
+
+#### Key Features
+- **Multi-model Support**: Compatible with OpenAI and other OpenAI-compatible APIs
+- **Flexible Configuration**: Customizable parameters for different use cases
+- **Easy Integration**: Seamlessly integrates with DatasetPlus processing workflows
+
+#### Methods
+
+- **`__init__(model_name, base_url, api_key)`**: Initialize the LLM tool
+  - `model_name`: The name of the model to use (e.g., "gpt-3.5-turbo")
+  - `base_url`: API base URL (e.g., "https://api.openai.com/v1")
+  - `api_key`: Your API key for authentication
+
+- **`getResult(query, sys_prompt=None, temperature=0.7, top_p=1, max_tokens=2048, model_name=None)`**: Get LLM response
+  - `query`: User query or prompt
+  - `sys_prompt`: System prompt to set context (optional)
+  - `temperature`: Controls randomness (0.0-2.0)
+  - `top_p`: Controls diversity via nucleus sampling
+  - `max_tokens`: Maximum number of tokens to generate
+  - `model_name`: Override the default model for this request
+
+#### Usage Example
+```python
+from datasetplus import MyLLMTool
+
+llm = MyLLMTool(
+    model_name="gpt-3.5-turbo",
+    base_url="https://api.openai.com/v1",
+    api_key="your-api-key"
+)
+
+result = llm.getResult(
+    query="Summarize this text: ...",
+    sys_prompt="You are a helpful assistant.",
+    temperature=0.7
+)
+```
+
+### DataTool
+
+A utility class providing various data processing and parsing functions for common data manipulation tasks.
+
+#### Key Features
+- **JSON Parsing**: Safe JSON extraction and parsing from text
+- **File Operations**: Read and sample data from files
+- **Data Validation**: Check data structure compliance
+- **Format Conversion**: Convert between different data formats
+
+#### Methods
+
+- **`parse_json_safe(text_str)`**: Extract and parse JSON objects/arrays from text
+  - `text_str`: Input string that may contain embedded JSON
+  - Returns: List of parsed Python objects (dicts or lists)
+
+- **`get_prompt(file_path)`**: Read text file and return content as string
+  - `file_path`: Path to the text file
+  - Returns: File content as concatenated string
+
+- **`check(row)`**: Validate data structure for message format
+  - `row`: Data row to validate
+  - Returns: Boolean indicating if structure is valid
+
+- **`check_with_system(row)`**: Check if data has system message format
+  - `row`: Data row to validate
+  - Returns: Boolean indicating if has valid system message
+
+- **`parse_messages(str_row)`**: Parse message format from string
+  - `str_row`: String containing message data
+  - Returns: Parsed message object or None
+
+- **`parse_json(str, json_tag=False)`**: Parse JSON with error handling
+  - `str`: JSON string to parse
+  - `json_tag`: Whether to extract from ```json``` code blocks
+  - Returns: Parsed object or None on failure
+
+- **`sample_from_file(file_path, num=-1)`**: Sample lines from text file
+  - `file_path`: Path to the file
+  - `num`: Number of samples (-1 for all)
+  - Returns: List of sampled lines
+
+- **`sample_from(path, num=-1, granularity="auto", exclude=[])`**: Sample data from files/directories
+  - `path`: File or directory path
+  - `num`: Number of samples (-1 for all)
+  - `granularity`: Sampling granularity ("auto", "file", "line")
+  - `exclude`: Patterns to exclude
+  - Returns: List of sampled content
+
+- **`jsonl2json(source_path, des_path)`**: Convert JSONL to JSON format
+  - `source_path`: Source JSONL file path
+  - `des_path`: Destination JSON file path
+
+#### Usage Example
+```python
+from datasetplus import DataTool
+
+# Parse JSON from text
+json_data = DataTool.parse_json_safe('Some text {"key": "value"} more text')
+
+# Read prompt from file
+prompt = DataTool.get_prompt('prompt.txt')
+
+# Validate data structure
+is_valid = DataTool.check(data_row)
+
+# Sample from file
+samples = DataTool.sample_from_file('data.txt', num=10)
+```
+
+These auxiliary tools are designed to work seamlessly with DatasetPlus workflows, providing essential utilities for LLM integration and data processing tasks.

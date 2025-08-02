@@ -6,8 +6,13 @@ import hashlib
 import json
 import logging
 import re
+import random
+import glob
 from datasets import Dataset, DatasetDict, load_dataset, concatenate_datasets
-
+from openai import OpenAI
+import pandas as pd
+import json5
+from json_repair import repair_json
 
 class DatasetPlusMeta(type):
     def __getattr__(cls, name):
@@ -628,5 +633,195 @@ class MyLLMTool:
         result = completion.choices[0].message.content.strip()
         #print(completion)
         return result
+
+
+
+class DataTool:
+    @staticmethod
+    def parse_json_safe(text_str: str):
+        """
+        从包含文本的字符串中提取并解析一个或多个JSON对象/数组。
+
+        Args:
+            text_str (str): 可能包含一个或多个嵌入式JSON的输入字符串。
+
+        Returns:
+            list: 一个包含解析成功的Python对象（字典或列表）的列表。
+                  如果找不到有效的JSON或解析失败，则返回空列表。
+        """
+        results = []
+        i = 0
+        n = len(text_str)
+
+        while i < n:
+            char = text_str[i]
+
+            start_char = None
+            end_char = None
+
+            # 检查是否是JSON对象或数组的开始
+            if char == '{':
+                start_char = '{'
+                end_char = '}'
+            elif char == '[':
+                start_char = '['
+                end_char = ']'
+
+            if start_char:
+                balance = 1  # 用于跟踪嵌套的括号/方括号
+                start_index = i
+
+                # 向前扫描以找到匹配的结束字符
+                j = i + 1
+                found_end_char = False
+                while j < n:
+                    current_scan_char = text_str[j]
+
+                    # 如果在字符串内部遇到引号，需要特殊处理，但对于简单的括号匹配，这可以省略
+                    # 实际的JSON解析器会处理字符串内的括号
+
+                    if current_scan_char == start_char:  # 处理嵌套，例如 {"key": {"nested_key": "value"}}
+                        balance += 1
+                    elif current_scan_char == end_char:
+                        balance -= 1
+
+                    if balance == 0:  # 找到了匹配的结束字符
+                        potential_json_str = text_str[start_index: j + 1]
+                        try:
+                            parsed_json = json.loads(potential_json_str)
+                            results.append(parsed_json)
+                            i = j  # 将主扫描指针移到已解析JSON的末尾
+                            found_end_char = True
+                        except json.JSONDecodeError:
+                            # 这不是一个有效的JSON字符串，或者只是一个更大结构的一部分。
+                            # 我们将忽略它，外部循环的 i 会递增，从下一个字符开始扫描。
+                            pass
+                        break  # 无论成功与否，都跳出内部扫描循环 (j loop)
+                    j += 1
+
+                # 如果内部循环结束但没有找到匹配的结束符 (found_end_char is False)
+                # 外部循环的 i 会自动递增，跳过当前的 start_char
+
+            i += 1  # 移动主扫描指针到下一个字符
+        if len(results) == 1:
+            return results[0]
+        else:
+            return results
+
+    @classmethod
+    def get_prompt(cls, file_path):
+        # 读取txt文件，并将结果拼接成文本
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+            prompt = ''.join(lines)
+        return prompt
+
+    @classmethod
+    def check(cls, row):
+        """
+        检查数据结构是否符合要求
+        :param row:
+        :return:
+        """
+        if "messages" not in row:
+            return False
+        arr = row['messages']
+        for a in arr:
+            if 'content' not in a or 'role' not in a or a['role'] not in ['system', 'user', 'assistant']:
+                return False
+        return True
+
+    @classmethod
+    def check_with_system(cls, row):
+        flag = cls.check(row)
+        if flag is False:
+            return False
+        if row['messages'][0]['role'] == "system":
+            return True
+        return False
+
+    @classmethod
+    def parse_messages(cls, str_row):
+        '''
+        模型输出字符串类型样本
+        :param str_row:
+        :return:
+        '''
+        match = re.search(r"\[{['\"]role['\"].*?},?]", str_row, re.DOTALL)
+        if match:
+            o = json5.loads(match.group(0).replace("\'", "\"").replace(" ", "").replace("\n", ""))
+            return o
+        return None
+
+    @classmethod
+    def parse_json(cls, str, json_tag=False):
+        if json_tag:
+            match = re.search(r"```json\s*(.*?)\s*```", str, re.DOTALL)
+            if match:
+                str = match.group(1).strip()
+        try:
+            row = json5.loads(str)
+            return row
+        except Exception as e:
+            print(e)
+            try:
+                good_json = repair_json(str, ensure_ascii=False)
+                row = json5.loads(good_json)
+                return row
+            except Exception as e:
+                print(f"JSON解析错误: {e}")
+                # 打印错误发生位置附近的内容，帮助调试
+                error_context_start = max(0, e.pos - 20)
+                error_context_end = min(len(str), e.pos + 20)
+                print(
+                    f"错误位置 '{e.msg}' 附近: ...{str[error_context_start:e.pos]}<--ERROR-->{str[e.pos:error_context_end]}...")
+                print(e)
+                return None
+
+    @classmethod
+    def sample_from_file(cls, file_path, num=-1):
+        """
+        读取txt文件，每行一个数据，随机取其中一个
+        :param file_path:
+        :param num:
+        :return:
+        """
+        rows = []
+        with open(file_path, 'r') as f:
+            for line in f:
+                rows.append(line.strip())
+        if num == -1:
+            return rows
+        return random.sample(rows, num)
+
+    @classmethod
+    def sample_from(cls, path, num=-1, granularity="auto", exclude=["prompt.*"]):
+        """从文件夹中读取每个数据，粒度可以控制,默认为auto，即如果是文件则按行分割，如果是目录则每个文件单独分割"""
+        files = []
+        if os.path.isdir(path):
+            files = glob.glob(path)
+            # 从files 中删除  exclude中的所有内容,注意exclude中可以包含正则匹配
+            for exclude_file in exclude:
+                files = [file for file in files if not re.match(exclude_file, file)]
+        else:
+            files = [path]
+
+        file_contents = []
+        for file in files:
+            if granularity == "file":
+                file_contents.append(cls.get_prompt(file))
+            elif granularity == "line":
+                file_contents.extend(cls.sample_from_file(file))
+        if num == -1:
+            return file_contents
+        return random.sample(file_contents, num)
+
+    @classmethod
+    def jsonl2json(cls, source_path, des_path):
+        with open(source_path, 'r', encoding='utf-8') as infile:
+            data = [json.loads(line) for line in infile if line.strip()]
+
+        with open(des_path, 'w', encoding='utf-8') as outfile:
+            json.dump(data, outfile, ensure_ascii=False, indent=4)
 
 

@@ -11,3 +11,6 @@ pyarrow>=5.0.0   # For better performance with datasets
 # Utility dependencies
 tqdm>=4.62.0     # Progress bars
 requests>=2.25.0 # HTTP requests
+openai>=1.0.0    # OpenAI API client
+json5>=0.9.0     # JSON5 parser
+json-repair>=0.7.0 # JSON repair utility
