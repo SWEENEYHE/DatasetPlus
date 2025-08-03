@@ -49,7 +49,8 @@ class DatasetPlus(metaclass=DatasetPlusMeta):
         if postfix == ".jsonl" or postfix == ".json":
             ds = load_dataset("json", data_files=file_name)
         elif postfix == ".xlsx":
-            ds = load_dataset("excel", data_files=file_name)
+            df = pd.read_excel(file_name)
+            ds = Dataset.from_pandas(df)
         elif postfix == ".csv":
             ds = load_dataset("csv", data_files=file_name)
         return DatasetPlus(ds, output_file=output_file)
