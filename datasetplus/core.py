@@ -76,7 +76,8 @@ class DatasetPlus(metaclass=DatasetPlusMeta):
                     dataset_dict_item = load_dataset("json", data_files=file_path)
                 elif postfix == ".xlsx":
                     logging.info(f"Loading Excel file: {file_path}")
-                    dataset_dict_item = load_dataset("excel", data_files=file_path)
+                    df = pd.read_excel(file_path)
+                    dataset_dict_item = Dataset.from_pandas(df)
                 elif postfix == ".csv":
                     logging.info(f"Loading CSV file: {file_path}")
                     dataset_dict_item = load_dataset("csv", data_files=file_path)
@@ -84,14 +85,19 @@ class DatasetPlus(metaclass=DatasetPlusMeta):
                     logging.warning(f"Skipping unsupported file type: {file_path}")
                     return
 
-                # 从 DatasetDict 中提取 Dataset
+                # 从 DatasetDict 中提取 Dataset 或直接使用 Dataset
                 if dataset_dict_item:
-                    if 'train' in dataset_dict_item:
-                        target_list.append(dataset_dict_item['train'])
-                    elif dataset_dict_item:  # 如果没有 'train' 但 DatasetDict 不为空
-                        first_split_name = list(dataset_dict_item.keys())[0]
-                        target_list.append(dataset_dict_item[first_split_name])
-                        logging.info(f"Used first available split '{first_split_name}' for {file_path}")
+                    if isinstance(dataset_dict_item, Dataset):
+                        # 直接是 Dataset 对象（如从 Excel 文件加载）
+                        target_list.append(dataset_dict_item)
+                    elif isinstance(dataset_dict_item, DatasetDict):
+                        # 是 DatasetDict 对象（如从 JSON/CSV 文件加载）
+                        if 'train' in dataset_dict_item:
+                            target_list.append(dataset_dict_item['train'])
+                        elif dataset_dict_item:  # 如果没有 'train' 但 DatasetDict 不为空
+                            first_split_name = list(dataset_dict_item.keys())[0]
+                            target_list.append(dataset_dict_item[first_split_name])
+                            logging.info(f"Used first available split '{first_split_name}' for {file_path}")
                     else:
                         logging.warning(f"load_dataset returned an empty DatasetDict for {file_path}")
                 else:
@@ -441,15 +447,14 @@ class DatasetPlus(metaclass=DatasetPlusMeta):
 class DatasetPlusExcels(DatasetPlus):
     """继承DatasetPlus，专门用于处理多sheet的Excel文件"""
     
-    def __init__(self, file_path, output_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
+    def __init__(self, dsexcel, output_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
         """初始化DatasetPlusExcels
         
         Args:
             file_path: Excel文件路径
             output_file: 输出文件路径
         """
-        self.file_path = file_path
-        self.excel_data = None
+        self.excel_data = dsexcel
         self.sheet_names = []
         super().__init__(output_file=output_file)
         
@@ -562,9 +567,9 @@ class DatasetPlusExcels(DatasetPlus):
             else:
                 processed_sheets[sheet_name] = sheet_dataset
         
-        return processed_sheets
+        return DatasetPlusExcels(processed_sheets)
     
-    def to_excel(self, processed_sheets, output_path=None):
+    def to_excel(self, output_path=None):
         """保存处理后的数据到Excel文件，保持原sheet格式
         
         Args:
