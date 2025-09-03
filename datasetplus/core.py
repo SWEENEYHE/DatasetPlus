@@ -447,7 +447,7 @@ class DatasetPlus(metaclass=DatasetPlusMeta):
 class DatasetPlusExcels(DatasetPlus):
     """继承DatasetPlus，专门用于处理多sheet的Excel文件"""
     
-    def __init__(self, dsexcel, output_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
+    def __init__(self, dsexcel, temp_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
         """初始化DatasetPlusExcels
         
         Args:
@@ -456,10 +456,10 @@ class DatasetPlusExcels(DatasetPlus):
         """
         self.excel_data = dsexcel
         self.sheet_names = []
-        super().__init__(output_file=output_file)
+        super().__init__(output_file=temp_file)
         
     @staticmethod
-    def load_dataset(file_path, target_sheets=None, output_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
+    def load_dataset(file_path, target_sheets=None, temp_file="DatasetPlus_temp/DatasetPlusExcels_map.jsonl"):
         """加载Excel文件的指定sheets
         
         Args:
@@ -470,7 +470,7 @@ class DatasetPlusExcels(DatasetPlus):
         Returns:
             DatasetPlusExcels: 实例对象
         """
-        instance = DatasetPlusExcels(file_path, output_file)
+        instance = DatasetPlusExcels(file_path, temp_file)
         
         # 读取所有sheet信息
         all_excel_data = pd.read_excel(file_path, sheet_name=None)
@@ -569,7 +569,7 @@ class DatasetPlusExcels(DatasetPlus):
         
         return DatasetPlusExcels(processed_sheets)
     
-    def to_excel(self, output_path=None):
+    def to_excel(self, output_path):
         """保存处理后的数据到Excel文件，保持原sheet格式
         
         Args:
@@ -579,10 +579,6 @@ class DatasetPlusExcels(DatasetPlus):
         Returns:
             str: 输出文件路径
         """
-        if output_path is None:
-            base_name, ext = os.path.splitext(self.file_path)
-            output_path = f"{base_name}_processed{ext}"
-        
         with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
             for sheet_name, dataset_plus in processed_sheets.items():
                 # 将DatasetPlus转换回pandas DataFrame
